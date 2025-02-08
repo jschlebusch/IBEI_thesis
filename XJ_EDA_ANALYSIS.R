@@ -149,6 +149,7 @@ df_cult_relative_counts <- st_drop_geometry(df_cult_sf) %>%
     CombinedRelative = (DestroyedSites + SignificantlyDamagedSites) / TotalSites
   )
 
+write.xlsx(df_cult_relative_counts, "xj_relative_destruction.xlsx")
 
 #English county and prefecture names, for reference
 ##UNTIL L. 134 NOT TO BE RE-RUN - TRANSLATION VOLUME RESTRICTIONS
@@ -235,6 +236,8 @@ barplot(df_attacks_count$attacks)
 duplicate_attacks <- table(df_attacks_count$Code_County)[table(df_attacks_count$Code_County) > 1]
 print(duplicate_attacks)
 
+write.xlsx(df_attacks_count, "xj_attacks_per_county.xlsx")
+
 #detention centers
 df_detention_sf <- read_sf("CampDataset_v1.shp")%>%
   rename(latitude = Lat,
@@ -255,6 +258,8 @@ df_county_counts_detention <- st_drop_geometry(df_county_counts_detention_sf)
 
 summary(df_county_counts_detention)
 hist(df_county_counts_detention$detention_count)
+
+write.xlsx(df_county_counts_detention, "xj_detention_per_county.xlsx")
 
 #resource sites
 df_resources_sf <- read_sf("xj_mineral sites_counties.geojson")
@@ -359,6 +364,11 @@ df_nighttimelight <- read.xlsx("xj_nighttimelight_av_00_16.xlsx") %>%
   mutate(nightlight_change = nightlight_mean_2016 - nightlight_mean_2000)
 summary(df_nighttimelight)
 
+#toponyms
+
+df_toponyms <- read.xlsx("xj_toponyms.xlsx")%>%
+  rename_all(tolower)
+
 ##------------------------------------------------------------------------------
 ##EDA DATA
 ##------------------------------------------------------------------------------
@@ -437,7 +447,17 @@ df_county_complete <- df_county_complete %>%
   mutate(petro_county = as.factor(petro_county),
          cotton_producing_county = as.factor(cotton_producing_county))
 
+df_county_complete <- df_county_complete %>%
+  left_join(df_toponyms, by = "code_county")
+
 summary(df_county_complete)
+
+df_county_complete <- df_county_complete %>%
+  mutate(any_se = destroyedrelative + change_relative,
+         any_se_destr_damages = combinedrelative + change_relative)
+
+
+openxlsx::write.xlsx(df_county_complete, "xj_countyvars.xlsx")
 
 df_county_complete_naomit <- df_county_complete %>%
   mutate(across(28:35, ~ ifelse(is.na(.), 0, .)))
