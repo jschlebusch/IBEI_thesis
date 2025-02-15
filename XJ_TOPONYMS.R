@@ -1,7 +1,9 @@
 library(tidyverse)
 library(mapchina)
 library(ggplot2)
+library(ggthemes)
 library(openxlsx)
+library(sf)
 
 ###-----------------------------------------------------------------------------
 ### TOPONYM CHANGES
@@ -86,12 +88,12 @@ write.xlsx(df_toponyms_clean, "xj_toponyms.xlsx")
 # some visualisations
 
 ggplot(data = df_counties) +
-  geom_sf(aes(fill = change_relative), color = NA) +  
+  geom_sf(aes(fill = num_renamed), color = NA) +  
   scale_fill_viridis_c(option = "magma", na.value = alpha("grey", 0.5)) +  
   theme_void() +
   labs(
-    title = "Relative Amount of Renamed Cities per County",
-    fill = "Relative Toponym Change"
+    title = "Number of Renamed Villages per County",
+    fill = "Number of Changed Toponyms"
   )+
   theme(legend.position = "bottom")
 
@@ -100,12 +102,30 @@ ggplot(data = df_counties) +
   scale_fill_viridis_c(option = "magma", na.value = alpha("grey", 0.5)) +  
   theme_void() +
   labs(
-    title = "Relative Amount of Renamed Cities per County",
+    title = "Relative Amount of Renamed Villages per County",
     fill = "Relative Toponym Change"
   )+
   theme(legend.position = "bottom")
 
+ggplot(data = df_counties %>%
+         filter(num_renamed > 0)) +
+  geom_bar(aes(x=Name_County, y=num_renamed), stat = "identity", fill = "skyblue", colour = "black") +
+  theme_clean()+
+  labs(
+    x = "County Name", y = "Number Renamed", title = "Number of Renamed Villages per County"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
+##------------------------------------------------------------------------------
+## DESCRIPTIVES
+##------------------------------------------------------------------------------
+
+keywords <- c("麻扎", "霍加", "美其特")
+counts <- sapply(keywords, function(word) sum(grepl(word, df_namechanges$before)))
+print(counts)
 
 
+keywords_prc <- c("幸福", "团结", "和谐")
+counts_prc <- sapply(keywords_prc, function(word) sum(grepl(word, df_namechanges$after)))
+print(counts_prc)
