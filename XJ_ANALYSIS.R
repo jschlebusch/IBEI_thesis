@@ -3,6 +3,9 @@ library(MCMCglmm)
 library(MCMCpack)
 library(modelsummary)
 
+library(officer)
+library(flextable)
+
 set.seed(123)
 
 ##---- DATA PREPARATION --------------------------------------------------------
@@ -1163,6 +1166,25 @@ m11_poisson <- MCMCglmm(se_sites ~ relative_change_han_pp +
                        thin = 10)
 summary(m11_poisson)
 
+m11_results <- as.data.frame(summary(m11_poisson)$solutions)
+
+m11_results <- m11_results %>%
+  tibble::rownames_to_column(var = "Variable") %>%
+  rename(Estimate = post.mean, 
+         Lower95 =`l-95% CI`, 
+         Upper95 =`u-95% CI`)
+
+m11_reg_table <- flextable(m11_results) %>%
+  autofit() %>%
+  theme_vanilla() %>%
+  set_caption("Bayesian Poisson Regression Results")
+
+doc_m11 <- read_docx() %>%
+  body_add_flextable(m11_reg_table) %>%
+  body_add_par("Table: Bayesian Poisson Regression Results", style = "heading 2")
+
+print(doc_m11, target = "m11_poisson_results.docx")
+
 # diagnostics
 posterior_samples_m11p <- m11_poisson$Sol
 
@@ -1351,6 +1373,53 @@ probabilities_m12bp <- data.frame(
 )
 
 print(probabilities_m12bp)
+
+## get regression tables into word without typing everything
+
+extract_results <- function(model, model_name) {
+  results <- as.data.frame(summary(model)$solutions) %>%
+    tibble::rownames_to_column(var = "Variable") %>%
+    rename(Estimate = post.mean, Lower95 = `l-95% CI`, Upper95 = `u-95% CI`) %>%
+    mutate(across(where(is.numeric), ~ round(.x, 3)))  # Round to 3 decimals
+  
+  # Create a flextable for this model
+  table <- flextable(results) %>%
+    autofit() %>%
+    theme_vanilla() %>%
+    set_caption(paste("Bayesian Poisson Regression Results -", model_name))
+  
+  return(table)
+}
+
+# Extract and create tables for each model
+m11_table  <- extract_results(m11_poisson, "M11")
+m11b_table <- extract_results(m11b_poisson, "M11b")
+m12_table  <- extract_results(m12_poisson, "M12")
+m12b_table <- extract_results(m12b_poisson, "M12b")
+
+# Create a new Word document and add each table separately
+doc <- read_docx() %>%
+  body_add_par("Table: Bayesian Poisson Regression Results for M11", style = "heading 2") %>%
+  body_add_flextable(m11_table) %>%
+  body_add_par("") %>% # Add space between tables
+  
+  body_add_par("Table: Bayesian Poisson Regression Results for M11b", style = "heading 2") %>%
+  body_add_flextable(m11b_table) %>%
+  body_add_par("") %>%
+  
+  body_add_par("Table: Bayesian Poisson Regression Results for M12", style = "heading 2") %>%
+  body_add_flextable(m12_table) %>%
+  body_add_par("") %>%
+  
+  body_add_par("Table: Bayesian Poisson Regression Results for M12b", style = "heading 2") %>%
+  body_add_flextable(m12b_table)
+
+# Save the Word document
+print(doc, target = "m11_m12_results_separate.docx")
+
+
+
+
 
 
 
